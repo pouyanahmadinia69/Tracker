@@ -109,7 +109,7 @@ const legMin=(a,b)=>{const r=R[rk(a,b)];return r&&r.min?r.min:dist(a,b)*K/(30*TR
 const dest=(t)=>t.leg<t.order.length?t.order[t.leg]:D;
 function fromMap(c){const l=ol.proj.toLonLat(c);return{x:400+(l[0]-51.389)/0.000277,y:300+(35.689-l[1])/0.000225}}
 function atFrac(a,b,f){const r=R[rk(a,b)];if(r&&r.pts){const tg=f*r.len;let i=1;while(i<r.cum.length-1&&r.cum[i]<tg)i++;const u=(tg-r.cum[i-1])/Math.max(r.cum[i]-r.cum[i-1],1e-9),p=r.pts[i-1],q=r.pts[i];return fromMap([p[0]+(q[0]-p[0])*Math.min(1,Math.max(0,u)),p[1]+(q[1]-p[1])*Math.min(1,Math.max(0,u))])}return{x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f}}
-function pos(t){if(t.fin)return D;if(t.dwell>0)return t.order[t.leg];return atFrac(t.from,dest(t),t.frac)}
+function pos(t){if(t.fin)return atFrac(t.from,D,1);if(t.dwell>0)return atFrac(t.from,t.order[t.leg],1);return atFrac(t.from,dest(t),t.frac)}
 function step(s,o,dt,cb){let g=0;while(dt>1e-9&&!s.fin&&g++<60){
  if(s.dwell>0){const u=Math.min(dt,s.dwell);s.dwell-=u;dt-=u;if(s.dwell<=1e-9){s.dwell=0;s.from={x:o[s.leg].x,y:o[s.leg].y};s.leg++;s.frac=0}continue}
  const to=s.leg<o.length?o[s.leg]:D,need=Math.max(legMin(s.from,to),.01),rem=(1-s.frac)*need;
@@ -131,7 +131,7 @@ function kmLeft(t){if(t.fin)return 0;let p=pos(t),d=0;const st=t.dwell>0?t.leg+1
  d+=dist(p,D);return d*K}
 function stopState(t,i){return i<t.leg?'done':(i===t.leg&&t.dwell>0?'dwell':'pend')}
 
-let map=null,vs=null,ovs={},lines={};
+let map=null,vs=null,ovs={},lines={},feats={};
 const ll=p=>ol.proj.fromLonLat([51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225]);
 function ov(key,cls,html,act,i){if(!ovs[key]){const d=document.createElement('div');d.className=cls;d.innerHTML=html;if(act){d.dataset.act=act;d.dataset.i=i}const o=new ol.Overlay({element:d,positioning:'center-center',stopEvent:true});map.addOverlay(o);ovs[key]={o,el:d}}return ovs[key]}
 function startMap(){const key=document.getElementById('key').value.trim(),m=document.getElementById('mapmsg');if(!key){m.textContent='ابتدا کلید وب نشان را وارد کن.';return}
@@ -144,10 +144,11 @@ function startMap(){const key=document.getElementById('key').value.trim(),m=docu
    document.head.append(l,sc);return}
   m.textContent='خطا: SDK نشان لود نشد.';return}
  if(location.protocol==='file:')m.textContent='توجه: صفحه با file:// باز شده و ممکن است کلید دامنه‌دار قبول نشود. ';
- try{if(map)map.setTarget(null);ovs={};lines={};document.getElementById('map').innerHTML='';
+ try{if(map)map.setTarget(null);ovs={};lines={};feats={};document.getElementById('map').innerHTML='';
   map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:11.5})});
   setTimeout(()=>{try{map.updateSize()}catch(e){}},300);window.addEventListener('resize',()=>{try{map.updateSize()}catch(e){}});
   try{vs=new ol.source.Vector();map.addLayer(new ol.layer.Vector({source:vs}))}catch(e){vs=null}
+  map.on('click',ev=>{map.forEachFeatureAtPixel(ev.pixel,f=>{const i=f.get('ti');if(i!=null){sel=i;all();return true}},{hitTolerance:10})});
   if(location.protocol!=='file:')m.textContent='';
   skey=document.getElementById('skey').value.trim();for(const k in R)delete R[k];Q.length=0;
   try{localStorage.setItem('nk',key);localStorage.setItem('nsk',skey)}catch(e){}
@@ -177,18 +178,23 @@ function roadPath(t,p){let out=[ll(p)];if(t.fin)return out;
  if(t.dwell<=0){const a=t.from,b=dest(t),r=R[rk(a,b)];
   if(r&&r.pts){const tg=t.frac*r.len;out=out.concat(r.pts.filter((_,i)=>r.cum[i]>tg))}else out.push(ll(b))}
  const sq=[D,...t.order,D];for(let i=t.leg+1;i<sq.length-1;i++)out=out.concat(seg(sq[i],sq[i+1]));return out}
-function drawMap(){if(!map)return;const live=new Set(['depot']);
- ov('depot','mk dep','🏭').o.setPosition(ll(D));
+function feat(key,coord,style,ti){let f=feats[key];if(!f){f=new ol.Feature(new ol.geom.Point(coord));if(ti!=null)f.set('ti',ti);vs.addFeature(f);feats[key]=f}else f.getGeometry().setCoordinates(coord);f.setStyle(style)}
+const circ=(r,fill,stroke,w)=>new ol.style.Circle({radius:r,fill:new ol.style.Fill({color:fill}),stroke:new ol.style.Stroke({color:stroke,width:w})});
+const txt=(t,col,size,oy,stk)=>new ol.style.Text({text:t,font:'700 '+size+'px Vazirmatn,Tahoma,sans-serif',fill:new ol.style.Fill({color:col}),offsetY:oy||0,stroke:stk?new ol.style.Stroke({color:'#fff',width:3}):undefined});
+const snapEnd=(a,b,fb)=>{const r=R[rk(a,b)];return r&&r.pts?r.pts[r.pts.length-1]:fb};
+function drawMap(){if(!map||!vs)return;const live=new Set(['depot']);
+ let dep=ll(D);for(const t of T){const r=t.order[0]&&R[rk(D,t.order[0])];if(r&&r.pts){dep=r.pts[0];break}}
+ feat('depot',dep,new ol.style.Style({image:circ(16,'#1a1d1b','#fff',3),text:txt('🏭','#fff',16),zIndex:10}));
  T.forEach((t,i)=>{
-  t.order.forEach((s,k)=>{const key='s'+t.id+s.n,z=stopState(t,k),r=ov(key,'mk','');live.add(key);
-   r.el.style.borderColor=t.c;r.el.style.background=z==='done'?t.c:z==='dwell'?'#e0a21a':'#fff';r.el.style.color=z==='pend'?t.c:'#fff';r.el.textContent=z==='done'?'✓':fa(k+1);r.o.setPosition(ll(s))});
-  const p=pos(t),tk=ov('t'+t.id,'tk','🚚<b>'+fa(t.id)+'</b>','sel',i);live.add('t'+t.id);
-  tk.el.style.borderColor=t.c;tk.el.classList.toggle('sel',i===sel);tk.o.setPosition(ll(p));
-  if(vs){try{const pts=[p];if(!t.fin){for(let k=(t.dwell>0?t.leg+1:t.leg);k<t.order.length;k++)pts.push(t.order[k]);pts.push(D)}
-   const co=roadPath(t,p);let f=lines[t.id];
-   if(!f){f=new ol.Feature(new ol.geom.LineString(co));f.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:t.c,width:4,lineDash:[10,8]})}));vs.addFeature(f);lines[t.id]=f}else f.getGeometry().setCoordinates(co)}catch(e){}}
- });
- Object.keys(ovs).forEach(k=>{if(!live.has(k)){map.removeOverlay(ovs[k].o);delete ovs[k]}})}
+  const p=pos(t);
+  try{const co=roadPath(t,p);let f=lines[t.id];
+   if(!f){f=new ol.Feature(new ol.geom.LineString(co));f.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:t.c,width:4,lineDash:[10,8]})}));vs.addFeature(f);lines[t.id]=f}else f.getGeometry().setCoordinates(co)}catch(e){}
+  const sq=[D,...t.order];
+  t.order.forEach((s,k)=>{const z=stopState(t,k),key='s'+t.id+'-'+k+s.n;live.add(key);
+   feat(key,snapEnd(sq[k],s,ll(s)),new ol.style.Style({image:circ(14,z==='done'?t.c:z==='dwell'?'#e0a21a':'#fff',t.c,3),text:txt(z==='done'?'✓':fa(k+1),z==='pend'?t.c:'#fff',14),zIndex:10}))});
+  live.add('t'+t.id);
+  feat('t'+t.id,ll(p),[new ol.style.Style({image:circ(i===sel?22:18,'#fff',t.c,i===sel?6:4),text:txt('🚚','#000',20),zIndex:20}),new ol.style.Style({text:txt(fa(t.id),'#1a1d1b',14,-32,true),zIndex:20})],i)});
+ Object.keys(feats).forEach(k=>{if(!live.has(k)){vs.removeFeature(feats[k]);delete feats[k]}})}
 
 function drawPanel(){
  T.forEach(prefetch);const E=T.map(eta);
