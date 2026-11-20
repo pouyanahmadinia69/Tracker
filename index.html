@@ -11,8 +11,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>پنل مدیریت ناوگان · نقشه نشان</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap">
-<link rel="stylesheet" href="https://static.neshan.org/sdk/openlayers/v8.1.0/neshan-sdk/v1.0.5/index.css">
-<script src="https://static.neshan.org/sdk/openlayers/v8.1.0/neshan-sdk/v1.0.5/index.js"></script>
+<link rel="stylesheet" href="https://static.neshan.org/sdk/mapboxgl/v1.13.2/neshan-sdk/v1.1.3/index.css">
+<script src="https://static.neshan.org/sdk/mapboxgl/v1.13.2/neshan-sdk/v1.1.3/index.js"></script>
 <style>
 :root{--bg:#f3f4ef;--card:#fff;--tx:#1a1d1b;--mu:#68706b;--bd:#dfe2da;--land:#e9ece3;--road:#d3d8cc;--park:#cfe3cc;--water:#c6dce6;--warn:#9a4a05;--warnbg:#fcefd6;--ok:#0f6e56;--okbg:#dcf1e8;--btn:#1a1d1b;--btnt:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121513;--card:#1b1f1c;--tx:#eef1ee;--mu:#98a29c;--bd:#2c322e;--land:#232824;--road:#313833;--park:#26382a;--water:#1f3340;--warn:#f0b35a;--warnbg:#3a2c12;--ok:#5ad1a6;--okbg:#14352a;--btn:#eef1ee;--btnt:#121513;color-scheme:dark}}
@@ -65,6 +65,7 @@ button.on{border-color:#96192e}
 .tab.on{border-color:#a82a40;box-shadow:0 0 0 1px #a82a40}
 h1{padding-bottom:8px;border-bottom:1px solid #5e1c29}
 .leg{display:flex;gap:14px;font-size:12px;color:var(--mu);padding:8px 12px;flex-wrap:wrap}.leg i{display:inline-block;width:18px;height:5px;border-radius:3px;margin-inline-end:5px;vertical-align:middle}
+.mapboxgl-map{position:relative;overflow:hidden}.mapboxgl-canvas{position:absolute;left:0;top:0}.mapboxgl-marker{position:absolute;top:0;left:0}
 </style>
 </head>
 <body>
@@ -113,7 +114,7 @@ const R={},Q=[];let busy=false,skey='';
 const rk=(a,b)=>[a.x,a.y,b.x,b.y].map(v=>Math.round(v*10)).join(',');
 const legMin=(a,b)=>{const r=R[rk(a,b)];return r&&r.min?r.min:dist(a,b)*K/(30*TR[traffic])*60};
 const dest=(t)=>t.leg<t.order.length?t.order[t.leg]:D;
-function fromMap(c){const l=ol.proj.toLonLat(c);return{x:400+(l[0]-51.389)/0.000277,y:300+(35.689-l[1])/0.000225}}
+function fromMap(c){return{x:400+(c[0]-51.389)/0.000277,y:300+(35.689-c[1])/0.000225}}
 function atFrac(a,b,f){const r=R[rk(a,b)];if(r&&r.pts){const tg=f*r.len;let i=1;while(i<r.cum.length-1&&r.cum[i]<tg)i++;const u=(tg-r.cum[i-1])/Math.max(r.cum[i]-r.cum[i-1],1e-9),p=r.pts[i-1],q=r.pts[i];return fromMap([p[0]+(q[0]-p[0])*Math.min(1,Math.max(0,u)),p[1]+(q[1]-p[1])*Math.min(1,Math.max(0,u))])}return{x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f}}
 function pos(t){if(t.fin)return atFrac(t.from,D,1);if(t.dwell>0)return atFrac(t.from,t.order[t.leg],1);return atFrac(t.from,dest(t),t.frac)}
 function step(s,o,dt,cb){let g=0;while(dt>1e-9&&!s.fin&&g++<60){
@@ -137,31 +138,23 @@ function kmLeft(t){if(t.fin)return 0;let p=pos(t),d=0;const st=t.dwell>0?t.leg+1
  d+=dist(p,D);return d*K}
 function stopState(t,i){return i<t.leg?'done':(i===t.leg&&t.dwell>0?'dwell':'pend')}
 
-let traffOn=true,night=true,map=null,vs=null,ovs={},lines={},feats={};
-const ll=p=>ol.proj.fromLonLat([51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225]);
-function ov(key,cls,html,act,i){if(!ovs[key]){const d=document.createElement('div');d.className=cls;d.innerHTML=html;if(act){d.dataset.act=act;d.dataset.i=i}const o=new ol.Overlay({element:d,positioning:'center-center',stopEvent:true});map.addOverlay(o);ovs[key]={o,el:d}}return ovs[key]}
-function applyType(){if(!map)return;try{map.setMapType(night?'standard-night':'neshan')}catch(e){}try{map.switchTrafficLayer(traffOn)}catch(e){}}
-function startMap(){const key=document.getElementById('key').value.trim(),m=document.getElementById('mapmsg');if(!key){m.textContent='ابتدا کلید وب نشان را وارد کن.';return}
- if(typeof ol==='undefined'){
-  if(!window._tried){window._tried=1;m.textContent='SDK از اینترنت لود نشد؛ تلاش با فایل محلی neshan-sdk/index.js ...';
-   const l=document.createElement('link');l.rel='stylesheet';l.href='neshan-sdk/index.css';
-   const sc=document.createElement('script');sc.src='neshan-sdk/index.js';
-   sc.onload=()=>startMap();
-   sc.onerror=()=>{window._tried=0;m.textContent='خطا: SDK نشان لود نشد. دو فایل index.js و index.css را دانلود کن و در پوشه neshan-sdk کنار این فایل بگذار.'};
-   document.head.append(l,sc);return}
-  m.textContent='خطا: SDK نشان لود نشد.';return}
- if(location.protocol==='file:')m.textContent='توجه: صفحه با file:// باز شده و ممکن است کلید دامنه‌دار قبول نشود. ';
- try{if(map)map.setTarget(null);ovs={};lines={};feats={};document.getElementById('map').innerHTML='';
-  map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:12})});
-  applyType();setTimeout(applyType,900);setTimeout(applyType,2500);
-  setTimeout(()=>{try{map.updateSize()}catch(e){}},300);window.addEventListener('resize',()=>{try{map.updateSize()}catch(e){}});
-  try{vs=new ol.source.Vector();map.addLayer(new ol.layer.Vector({source:vs}))}catch(e){vs=null}
-  map.on('click',ev=>{map.forEachFeatureAtPixel(ev.pixel,f=>{const i=f.get('ti');if(i!=null){sel=i;all();return true}},{hitTolerance:10})});
-  if(location.protocol!=='file:')m.textContent='';
-  skey=document.getElementById('skey').value.trim();for(const k in R)delete R[k];Q.length=0;
-  try{localStorage.setItem('nk',key);localStorage.setItem('nsk',skey)}catch(e){}
-  if(!skey)m.textContent='کلید سرویس مسیریابی وارد نشده؛ فعلاً مسیر خط مستقیم است.';
-  T.forEach(prefetch);drawMap()}catch(e){map=null;m.textContent='خطا: '+(e&&e.message?e.message:e)}}
+let traffOn=true,night=true,map=null,ready=false,MK={};
+const ll=p=>[51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225];
+function startMap(keep){const m=document.getElementById('mapmsg'),key=document.getElementById('key').value.trim();
+ if(!key){m.textContent='ابتدا کلید وب نشان را وارد کن.';return}
+ if(typeof nmp_mapboxgl==='undefined'){m.textContent='خطا: SDK نشان لود نشد. اینترنت را بررسی کن و دوباره باز کن.';return}
+ let c=[51.389,35.689],z=12;if(keep&&map){c=map.getCenter().toArray();z=map.getZoom()}
+ try{if(map)map.remove();for(const k in MK)MK[k].m.remove();MK={};ready=false;document.getElementById('map').innerHTML='';
+  const MT=nmp_mapboxgl.Map.mapTypes;
+  map=new nmp_mapboxgl.Map({mapType:night?(MT.neshanVectorNight||MT.neshanVector):MT.neshanVector,container:'map',zoom:z,pitch:0,center:c,minZoom:8,maxZoom:20,trackResize:true,mapKey:key,poi:false,traffic:traffOn});
+  map.on('load',()=>{map.addSource('rt',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
+   map.addLayer({id:'rt',type:'line',source:'rt',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['get','c'],'line-width':4,'line-dasharray':[2,1.5]}});
+   ready=true;m.textContent='';drawMap()});
+  map.on('error',e=>{const x=e&&e.error;m.textContent='خطای نقشه: '+(x&&(x.message||x.status)||'نامشخص')});
+  if(!keep){skey=document.getElementById('skey').value.trim();for(const k in R)delete R[k];Q.length=0;
+   try{localStorage.setItem('nk',key);localStorage.setItem('nsk',skey)}catch(e){}
+   if(!skey)m.textContent='کلید سرویس مسیریابی وارد نشده؛ فعلاً مسیر خط مستقیم است.'}
+  T.forEach(prefetch)}catch(e){map=null;m.textContent='خطا: '+(e&&e.message?e.message:e)}}
 const toLL=p=>[51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225];
 function dec(s){let i=0,la=0,lo=0,o=[];while(i<s.length){let b,sh=0,r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);la+=(r&1)?~(r>>1):r>>1;sh=0;r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lo+=(r&1)?~(r>>1):r>>1;o.push([lo/1e5,la/1e5])}return o}
 function want(a,b){if(!skey||!map)return;const k=rk(a,b),r=R[k];if(r&&(r.q||Date.now()-r.ts<(r.pts?600000:60000)))return;
@@ -172,10 +165,10 @@ async function pump(){if(busy)return;busy=true;const m=document.getElementById('
    const res=await fetch(`https://api.neshan.org/v4/direction?type=car&origin=${A[1]},${A[0]}&destination=${B[1]},${B[0]}&alternative=false`,{headers:{'Api-Key':skey}});
    if(!res.ok)throw new Error('HTTP '+res.status);
    const j=await res.json(),rt=j.routes&&j.routes[0];if(!rt)throw new Error('مسیری پیدا نشد');
-   const pts=dec(rt.overview_polyline.points).map(q=>ol.proj.fromLonLat(q)),cum=[0];
-   for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+   const pts=dec(rt.overview_polyline.points),cum=[0];
+   for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot((pts[i][0]-pts[i-1][0])*0.812,pts[i][1]-pts[i-1][1]));
    let sec=0;(rt.legs||[]).forEach(l=>sec+=(l.duration&&l.duration.value)||0);
-   r.pts=pts;r.cum=cum;r.len=cum[cum.length-1]||1;r.min=sec?sec/60:Math.max(1,r.len/1000/30*60);r.ts=Date.now();
+   r.pts=pts;r.cum=cum;r.len=cum[cum.length-1]||1;r.min=sec?sec/60:Math.max(1,r.len*111/30*60);r.ts=Date.now();
    m.textContent='';const sg=document.querySelector('.seg');if(sg)sg.style.display='none'}
   catch(e){r.fail=1;r.ts=Date.now();m.textContent='مسیریابی نشان: '+e.message+' (کلید سرویس، دامنه مجاز یا CORS را بررسی کن)'}
   r.q=0;await new Promise(z=>setTimeout(z,250))}
@@ -186,23 +179,24 @@ function roadPath(t,p){let out=[ll(p)];if(t.fin)return out;
  if(t.dwell<=0){const a=t.from,b=dest(t),r=R[rk(a,b)];
   if(r&&r.pts){const tg=t.frac*r.len;out=out.concat(r.pts.filter((_,i)=>r.cum[i]>tg))}else out.push(ll(b))}
  const sq=[D,...t.order,D];for(let i=t.leg+1;i<sq.length-1;i++)out=out.concat(seg(sq[i],sq[i+1]));return out}
-function feat(key,coord,style,ti){let f=feats[key];if(!f){f=new ol.Feature(new ol.geom.Point(coord));if(ti!=null)f.set('ti',ti);vs.addFeature(f);feats[key]=f}else f.getGeometry().setCoordinates(coord);f.setStyle(style)}
-const circ=(r,fill,stroke,w)=>new ol.style.Circle({radius:r,fill:new ol.style.Fill({color:fill}),stroke:new ol.style.Stroke({color:stroke,width:w})});
-const txt=(t,col,size,oy,stk)=>new ol.style.Text({text:t,font:'700 '+size+'px Vazirmatn,Tahoma,sans-serif',fill:new ol.style.Fill({color:col}),offsetY:oy||0,stroke:stk?new ol.style.Stroke({color:'#fff',width:3}):undefined});
+function mark(key,lnglat,cls,html,cb){let o=MK[key];
+ if(!o){const d=document.createElement('div'),n=document.createElement('div');d.appendChild(n);if(cb)d.addEventListener('click',cb);o=MK[key]={m:new nmp_mapboxgl.Marker({element:d}).setLngLat(lnglat).addTo(map),i:n,h:''}}
+ o.m.setLngLat(lnglat);if(o.i.className!==cls)o.i.className=cls;if(o.h!==html){o.i.innerHTML=html;o.h=html}return o}
 const snapEnd=(a,b,fb)=>{const r=R[rk(a,b)];return r&&r.pts?r.pts[r.pts.length-1]:fb};
-function drawMap(){if(!map||!vs)return;const live=new Set(['depot']);
+function drawMap(){if(!map||!ready)return;const live=new Set(['depot']),fc=[];
  let dep=ll(D);for(const t of T){const r=t.order[0]&&R[rk(D,t.order[0])];if(r&&r.pts){dep=r.pts[0];break}}
- feat('depot',dep,new ol.style.Style({image:circ(16,'#1a1d1b','#fff',3),text:txt('🏭','#fff',16),zIndex:10}));
- T.forEach((t,i)=>{
-  const p=pos(t);
-  try{const co=roadPath(t,p);let f=lines[t.id];
-   if(!f){f=new ol.Feature(new ol.geom.LineString(co));f.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:t.c,width:4,lineDash:[10,8]})}));vs.addFeature(f);lines[t.id]=f}else f.getGeometry().setCoordinates(co)}catch(e){}
+ mark('depot',dep,'mk dep','🏭');
+ T.forEach((t,i)=>{const p=pos(t);
+  fc.push({type:'Feature',properties:{c:t.c},geometry:{type:'LineString',coordinates:roadPath(t,p)}});
   const sq=[D,...t.order];
   t.order.forEach((s,k)=>{const z=stopState(t,k),key='s'+t.id+'-'+k+s.n;live.add(key);
-   feat(key,snapEnd(sq[k],s,ll(s)),new ol.style.Style({image:circ(14,z==='done'?t.c:z==='dwell'?'#e0a21a':'#fff',t.c,3),text:txt(z==='done'?'✓':fa(k+1),z==='pend'?t.c:'#fff',14),zIndex:10}))});
+   const o=mark(key,snapEnd(sq[k],s,ll(s)),'mk',z==='done'?'✓':fa(k+1));
+   o.i.style.borderColor=t.c;o.i.style.background=z==='done'?t.c:z==='dwell'?'#e0a21a':'#fff';o.i.style.color=z==='pend'?t.c:'#fff'});
   live.add('t'+t.id);
-  feat('t'+t.id,ll(p),[new ol.style.Style({image:circ(i===sel?22:18,'#fff',t.c,i===sel?6:4),text:txt('🚚','#000',20),zIndex:20}),new ol.style.Style({text:txt(fa(t.id),'#1a1d1b',14,-32,true),zIndex:20})],i)});
- Object.keys(feats).forEach(k=>{if(!live.has(k)){vs.removeFeature(feats[k]);delete feats[k]}})}
+  const o=mark('t'+t.id,ll(p),'tk'+(i===sel?' sel':''),'🚚<b>'+fa(t.id)+'</b>',()=>{sel=i;all()});
+  o.i.style.borderColor=t.c});
+ try{map.getSource('rt').setData({type:'FeatureCollection',features:fc})}catch(e){}
+ Object.keys(MK).forEach(k=>{if(!live.has(k)){MK[k].m.remove();delete MK[k]}})}
 
 function drawPanel(){
  T.forEach(prefetch);const E=T.map(eta);
@@ -231,8 +225,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
  if(a==='sel')sel=+b.dataset.i;
  else if(a==='tr')traffic=b.dataset.v;
  else if(a==='play')run=!run;
- else if(a==='mt'){if(map){night=!night;applyType()}}
- else if(a==='tf'){traffOn=!traffOn;if(map)applyType()}
+ else if(a==='mt'){night=!night;if(map)startMap(true)}
+ else if(a==='tf'){traffOn=!traffOn;if(map)startMap(true)}
  else if(a==='map'){startMap();return}
  else if(a==='reset'){init();sel=0;run=true}
  else if(a==='apply'){const sg=suggest(t);if(sg){t.order=t.order.slice(0,sg.st).concat(sg.best);if(t.dwell<=0){t.from=pos(t);t.frac=0}}}
@@ -245,6 +239,7 @@ setInterval(()=>{const n=performance.now(),dr=(n-last)/1000;last=n;if(!run)retur
  const dm=dr*speed*3;now+=dm;T.forEach(t=>step(t,t.order,dm));
  document.getElementById('clk').textContent=fmt(now);drawMap();acc+=dr;if(acc>1.2){acc=0;drawPanel()}},100);
 try{document.getElementById('key').value=localStorage.getItem('nk')||'';document.getElementById('skey').value=localStorage.getItem('nsk')||''}catch(e){}
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 all();
 </script>
 </body>
