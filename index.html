@@ -2,11 +2,11 @@
 <html lang="fa" dir="rtl">
 <head>
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="ناوگان">
-<meta name="theme-color" content="#0f9b74">
+<meta name="theme-color" content="#0a0a0b">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>پنل مدیریت ناوگان · نقشه نشان</title>
@@ -60,10 +60,14 @@ svg{display:block;width:100%;height:auto}
 .kbar{display:flex;gap:8px;padding:10px;flex-wrap:wrap}
 .kbar input{flex:1;min-width:180px;font:inherit;font-size:13px;padding:5px 9px;border:1px solid var(--bd);border-radius:9px;background:var(--card);color:var(--tx);direction:ltr}
 #mapmsg{font-size:12px;color:var(--warn);padding:0 10px 8px}
+:root:root:root{--bg:#0a0a0b;--card:#141416;--tx:#f1f1f2;--mu:#9a9aa0;--bd:#2a2a2e;--land:#1c1c1f;--road:#2e2e33;--park:#1f2b22;--water:#1d2a33;--warn:#f0b35a;--warnbg:#3a2c12;--ok:#5ad1a6;--okbg:#10291f;--btn:#96192e;--btnt:#f1f1f2;color-scheme:dark}
+button.on{border-color:#96192e}
+.tab.on{border-color:#a82a40;box-shadow:0 0 0 1px #a82a40}
+h1{padding-bottom:8px;border-bottom:1px solid #5e1c29}
 </style>
 </head>
 <body>
-<h1>پنل مدیریت ناوگان توزیع</h1>
+<h1 style="display:flex;align-items:center;gap:10px"><img src="data:image/png;base64,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" alt="لوگو" width="44" height="44" style="border-radius:10px">پنل مدیریت ناوگان توزیع</h1>
 
 <div class="card">
   <div class="bar">
@@ -80,7 +84,7 @@ svg{display:block;width:100%;height:auto}
 </div>
 
 <div class="card mapw">
-<div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><input id="skey" placeholder="کلید سرویس نشان (مسیریابی)" aria-label="کلید سرویس نشان" autocomplete="off"><button class="on" data-act="map">نمایش نقشه نشان</button></div>
+<div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><input id="skey" placeholder="کلید سرویس نشان (مسیریابی)" aria-label="کلید سرویس نشان" autocomplete="off"><button data-act="mt">نقشه روشن</button><button class="on" data-act="map">نمایش نقشه نشان</button></div>
 <div id="mapmsg">برای دیدن نقشه و ترافیک زنده، کلید وب نشان را وارد کن.</div>
 <div id="map" dir="ltr"></div>
 </div>
@@ -131,7 +135,7 @@ function kmLeft(t){if(t.fin)return 0;let p=pos(t),d=0;const st=t.dwell>0?t.leg+1
  d+=dist(p,D);return d*K}
 function stopState(t,i){return i<t.leg?'done':(i===t.leg&&t.dwell>0?'dwell':'pend')}
 
-let map=null,vs=null,ovs={},lines={},feats={};
+let night=true,map=null,vs=null,ovs={},lines={},feats={};
 const ll=p=>ol.proj.fromLonLat([51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225]);
 function ov(key,cls,html,act,i){if(!ovs[key]){const d=document.createElement('div');d.className=cls;d.innerHTML=html;if(act){d.dataset.act=act;d.dataset.i=i}const o=new ol.Overlay({element:d,positioning:'center-center',stopEvent:true});map.addOverlay(o);ovs[key]={o,el:d}}return ovs[key]}
 function startMap(){const key=document.getElementById('key').value.trim(),m=document.getElementById('mapmsg');if(!key){m.textContent='ابتدا کلید وب نشان را وارد کن.';return}
@@ -146,6 +150,7 @@ function startMap(){const key=document.getElementById('key').value.trim(),m=docu
  if(location.protocol==='file:')m.textContent='توجه: صفحه با file:// باز شده و ممکن است کلید دامنه‌دار قبول نشود. ';
  try{if(map)map.setTarget(null);ovs={};lines={};feats={};document.getElementById('map').innerHTML='';
   map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:11.5})});
+  try{map.setMapType('standard-night')}catch(e){night=false}
   setTimeout(()=>{try{map.updateSize()}catch(e){}},300);window.addEventListener('resize',()=>{try{map.updateSize()}catch(e){}});
   try{vs=new ol.source.Vector();map.addLayer(new ol.layer.Vector({source:vs}))}catch(e){vs=null}
   map.on('click',ev=>{map.forEachFeatureAtPixel(ev.pixel,f=>{const i=f.get('ti');if(i!=null){sel=i;all();return true}},{hitTolerance:10})});
@@ -215,7 +220,7 @@ function drawPanel(){
  const al=T.map((x,i)=>!x.fin&&E[i].end>SHIFT?`<div class="box w">${x.name.split(' · ')[0]}: احتمال تأخیر نسبت به پایان شیفت</div>`:'').join('');
  document.getElementById('alerts').innerHTML=al}
 
-function btns(){document.querySelectorAll('[data-act=tr]').forEach(b=>b.classList.toggle('on',b.dataset.v===traffic));
+function btns(){const mb=document.querySelector('[data-act=mt]');if(mb)mb.textContent=night?'نقشه روشن':'نقشه تیره';document.querySelectorAll('[data-act=tr]').forEach(b=>b.classList.toggle('on',b.dataset.v===traffic));
  const p=document.getElementById('play');p.textContent=run?'توقف':'ادامه'}
 function all(){document.getElementById('clk').textContent=fmt(now);drawMap();drawPanel();btns()}
 
@@ -223,6 +228,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
  if(a==='sel')sel=+b.dataset.i;
  else if(a==='tr')traffic=b.dataset.v;
  else if(a==='play')run=!run;
+ else if(a==='mt'){if(map){night=!night;try{map.setMapType(night?'standard-night':'neshan')}catch(e){}}}
  else if(a==='map'){startMap();return}
  else if(a==='reset'){init();sel=0;run=true}
  else if(a==='apply'){const sg=suggest(t);if(sg){t.order=t.order.slice(0,sg.st).concat(sg.best);if(t.dwell<=0){t.from=pos(t);t.frac=0}}}
