@@ -56,7 +56,7 @@ svg{display:block;width:100%;height:auto}
 .dep{background:#1a1d1b;border-color:#fff}
 .tk{background:#fff;border:4px solid;border-radius:20px;padding:0 8px;font-size:18px;display:flex;gap:4px;align-items:center;color:#1a1d1b;cursor:pointer;line-height:30px}
 .tk b{font-size:13px}.tk.sel{transform:scale(1.2)}
-#map{height:380px;background:var(--land);position:relative}
+#map{direction:ltr;height:380px;background:var(--land);position:relative}
 .kbar{display:flex;gap:8px;padding:10px;flex-wrap:wrap}
 .kbar input{flex:1;min-width:180px;font:inherit;font-size:13px;padding:5px 9px;border:1px solid var(--bd);border-radius:9px;background:var(--card);color:var(--tx);direction:ltr}
 #mapmsg{font-size:12px;color:var(--warn);padding:0 10px 8px}
@@ -82,7 +82,7 @@ svg{display:block;width:100%;height:auto}
 <div class="card mapw">
 <div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><input id="skey" placeholder="کلید سرویس نشان (مسیریابی)" aria-label="کلید سرویس نشان" autocomplete="off"><button class="on" data-act="map">نمایش نقشه نشان</button></div>
 <div id="mapmsg">برای دیدن نقشه و ترافیک زنده، کلید وب نشان را وارد کن.</div>
-<div id="map"></div>
+<div id="map" dir="ltr"></div>
 </div>
 
 <div class="tabs" id="tabs"></div>
@@ -146,6 +146,7 @@ function startMap(){const key=document.getElementById('key').value.trim(),m=docu
  if(location.protocol==='file:')m.textContent='توجه: صفحه با file:// باز شده و ممکن است کلید دامنه‌دار قبول نشود. ';
  try{if(map)map.setTarget(null);ovs={};lines={};document.getElementById('map').innerHTML='';
   map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:11.5})});
+  setTimeout(()=>{try{map.updateSize()}catch(e){}},300);window.addEventListener('resize',()=>{try{map.updateSize()}catch(e){}});
   try{vs=new ol.source.Vector();map.addLayer(new ol.layer.Vector({source:vs}))}catch(e){vs=null}
   if(location.protocol!=='file:')m.textContent='';
   skey=document.getElementById('skey').value.trim();for(const k in R)delete R[k];Q.length=0;
