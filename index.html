@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ناوگان">
+<meta name="theme-color" content="#0f9b74">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>پنل مدیریت ناوگان · نقشه نشان</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="https://static.neshan.org/sdk/openlayers/v8.1.0/neshan-sdk/v1.0.5/index.css">
+<script src="https://static.neshan.org/sdk/openlayers/v8.1.0/neshan-sdk/v1.0.5/index.js"></script>
+<style>
+:root{--bg:#f3f4ef;--card:#fff;--tx:#1a1d1b;--mu:#68706b;--bd:#dfe2da;--land:#e9ece3;--road:#d3d8cc;--park:#cfe3cc;--water:#c6dce6;--warn:#9a4a05;--warnbg:#fcefd6;--ok:#0f6e56;--okbg:#dcf1e8;--btn:#1a1d1b;--btnt:#fff;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121513;--card:#1b1f1c;--tx:#eef1ee;--mu:#98a29c;--bd:#2c322e;--land:#232824;--road:#313833;--park:#26382a;--water:#1f3340;--warn:#f0b35a;--warnbg:#3a2c12;--ok:#5ad1a6;--okbg:#14352a;--btn:#eef1ee;--btnt:#121513;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121513;--card:#1b1f1c;--tx:#eef1ee;--mu:#98a29c;--bd:#2c322e;--land:#232824;--road:#313833;--park:#26382a;--water:#1f3340;--warn:#f0b35a;--warnbg:#3a2c12;--ok:#5ad1a6;--okbg:#14352a;--btn:#eef1ee;--btnt:#121513;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--tx);font:400 15px/1.7 Vazirmatn,Tahoma,sans-serif;padding:12px;max-width:760px;margin-inline:auto}
+h1{font-size:19px;font-weight:800;margin:4px 0 10px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.clock{font-size:26px;font-weight:800;margin-inline-end:auto;font-variant-numeric:tabular-nums}
+.clock small{font-size:12px;font-weight:400;color:var(--mu);display:block;line-height:1}
+button,select{font:inherit;font-size:13px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:9px;padding:5px 11px;cursor:pointer}
+button:focus-visible,select:focus-visible{outline:2px solid var(--ok);outline-offset:2px}
+button.on{background:var(--btn);color:var(--btnt);border-color:var(--btn)}
+.seg{display:flex;gap:4px;align-items:center;font-size:13px;color:var(--mu)}
+.mapw{padding:0;overflow:hidden}
+svg{display:block;width:100%;height:auto}
+.tabs{display:flex;gap:8px;margin-bottom:10px}
+.tab{flex:1;text-align:start;padding:8px 10px;border-radius:12px;line-height:1.4}
+.tab b{display:block;font-size:13px}
+.tab span{font-size:12px;color:var(--mu)}
+.tab.on{background:var(--card);border-color:var(--tx);box-shadow:0 0 0 1px var(--tx)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:5px}
+.st{font-weight:600}
+.row{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--bd)}
+.row:first-of-type{border-top:0}
+.num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;border:2px solid;flex:none}
+.nm{flex:1}
+.chip{font-size:12px;padding:1px 8px;border-radius:20px;background:var(--bd);color:var(--mu)}
+.chip.g{background:var(--okbg);color:var(--ok)}
+.chip.o{background:var(--warnbg);color:var(--warn)}
+.tm{font-variant-numeric:tabular-nums;min-width:48px;text-align:end;font-weight:600}
+.box{border-radius:10px;padding:9px 11px;margin-top:10px;background:var(--okbg);color:var(--ok);font-size:14px}
+.box.w{background:var(--warnbg);color:var(--warn)}
+.box button{margin-top:6px;margin-inline-end:6px}
+.meta{display:flex;gap:14px;font-size:13px;color:var(--mu);margin:2px 0 6px;flex-wrap:wrap}
+.meta b{color:var(--tx)}
+.hint{font-size:12px;color:var(--mu);margin:2px 2px 14px}
+.mk{width:28px;height:28px;border-radius:50%;border:3px solid;background:#fff;display:grid;place-items:center;font:600 13px Vazirmatn,Tahoma,sans-serif;color:#1a1d1b}
+.dep{background:#1a1d1b;border-color:#fff}
+.tk{background:#fff;border:4px solid;border-radius:20px;padding:0 8px;font-size:18px;display:flex;gap:4px;align-items:center;color:#1a1d1b;cursor:pointer;line-height:30px}
+.tk b{font-size:13px}.tk.sel{transform:scale(1.2)}
+#map{height:380px;background:var(--land);position:relative}
+.kbar{display:flex;gap:8px;padding:10px;flex-wrap:wrap}
+.kbar input{flex:1;min-width:180px;font:inherit;font-size:13px;padding:5px 9px;border:1px solid var(--bd);border-radius:9px;background:var(--card);color:var(--tx);direction:ltr}
+#mapmsg{font-size:12px;color:var(--warn);padding:0 10px 8px}
+</style>
+</head>
+<body>
+<h1>پنل مدیریت ناوگان توزیع</h1>
+
+<div class="card">
+  <div class="bar">
+    <div class="clock"><small>ساعت شبیه‌سازی</small><span id="clk"></span></div>
+    <button id="play" data-act="play">توقف</button>
+    <select id="spd" aria-label="سرعت"><option value="1">۱×</option><option value="3">۳×</option><option value="8">۸×</option></select>
+    <button data-act="reset">شروع دوباره</button>
+  </div>
+  <div class="seg" style="margin-top:10px">ترافیک:
+    <button data-act="tr" data-v="free">آزاد</button>
+    <button data-act="tr" data-v="mid">متوسط</button>
+    <button data-act="tr" data-v="heavy">سنگین</button>
+  </div>
+</div>
+
+<div class="card mapw">
+<div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><button class="on" data-act="map">نمایش نقشه نشان</button></div>
+<div id="mapmsg">برای دیدن نقشه و ترافیک زنده، کلید وب نشان را وارد کن.</div>
+<div id="map"></div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+<div class="card" id="panel"></div>
+<div id="alerts"></div>
+<p class="hint">لایه ترافیک نشان روی نقشه زنده است، ولی ETA فعلاً با گزینه‌های ترافیک بالا محاسبه می‌شود. موقعیت کامیون‌ها هنوز شبیه‌سازی‌شده است.</p>
+
+<script>
+const K=0.0325,DW=25,SHIFT=720,D={x:400,y:300};
+const TR={free:1,mid:.65,heavy:.4};
+const fa=s=>String(s).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+const fmt=m=>{m=Math.floor(m);return fa(String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0'))};
+let traffic='mid',speed=1,run=true,now=480,sel=0,T;
+const mk=(id,name,c,l)=>({id,name,c,order:l.map(([n,x,y])=>({n,x,y})),leg:0,from:{...D},frac:0,dwell:0,fin:false,tom:[]});
+function init(){now=480;T=[
+ mk(1,'کامیون ۱ · علی','#0f9b74',[['فروشگاه ونک',150,120],['سوپر پونک',120,300],['رستوران سعادت‌آباد',260,200]]),
+ mk(2,'کامیون ۲ · رضا','#d9822b',[['هایپر تجریش',620,110],['فروشگاه نارمک',650,380],['سوپر پاسداران',700,230],['کافه‌رستوران شمیران',560,250]]),
+ mk(3,'کامیون ۳ · مهدی','#3b6fd4',[['فروشگاه شهرری',200,480],['سوپر میدان فتح',330,400],['رستوران ستارخان',400,520]])]}
+init();
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const legMin=(a,b)=>dist(a,b)*K/(30*TR[traffic])*60;
+const dest=(t)=>t.leg<t.order.length?t.order[t.leg]:D;
+function pos(t){if(t.fin)return D;if(t.dwell>0)return t.order[t.leg];const to=dest(t);return{x:t.from.x+(to.x-t.from.x)*t.frac,y:t.from.y+(to.y-t.from.y)*t.frac}}
+function step(s,o,dt,cb){let g=0;while(dt>1e-9&&!s.fin&&g++<60){
+ if(s.dwell>0){const u=Math.min(dt,s.dwell);s.dwell-=u;dt-=u;if(s.dwell<=1e-9){s.dwell=0;s.from={x:o[s.leg].x,y:o[s.leg].y};s.leg++;s.frac=0}continue}
+ const to=s.leg<o.length?o[s.leg]:D,need=Math.max(legMin(s.from,to),.01),rem=(1-s.frac)*need;
+ if(dt>=rem){dt-=rem;s.frac=1;if(s.leg<o.length){s.dwell=DW;cb&&cb(s.leg)}else s.fin=true}else{s.frac+=dt/need;dt=0}}}
+function eta(t){const s={leg:t.leg,from:t.from,frac:t.frac,dwell:t.dwell,fin:t.fin},a={};let m=now,g=0;
+ if(s.dwell>0)a.cur=true;
+ while(!s.fin&&g++<1200){m++;step(s,t.order,1,i=>a[i]=m)}return{a,end:m}}
+function perms(a){if(a.length<2)return[a];const r=[];a.forEach((x,i)=>perms([...a.slice(0,i),...a.slice(i+1)]).forEach(p=>r.push([x,...p])));return r}
+function suggest(t){if(t.fin)return null;const dw=t.dwell>0,st=dw?t.leg+1:t.leg,R=t.order.slice(st);if(R.length<2)return null;
+ const P=dw?t.order[t.leg]:pos(t);
+ const cost=a=>{let p=P,c=0;for(const q of a){c+=dist(p,q);p=q}return c+dist(p,D)};
+ const cur=cost(R);let best=R,bc=cur;perms(R).forEach(p=>{const c=cost(p);if(c<bc-1e-6){bc=c;best=p}});
+ if(cur-bc<cur*.03)return null;
+ return{best,st,km:(cur-bc)*K,min:(cur-bc)*K/(30*TR[traffic])*60}}
+function stat(t){if(t.fin)return'مسیر تمام شد، کامیون در انبار است';if(t.dwell>0)return'در حال تخلیه در '+t.order[t.leg].n;if(t.leg<t.order.length)return'در راه '+t.order[t.leg].n;return'در حال بازگشت به انبار'}
+function kmLeft(t){if(t.fin)return 0;let p=pos(t),d=0;const st=t.dwell>0?t.leg+1:t.leg;
+ if(t.dwell<=0&&t.leg<t.order.length){d+=dist(p,t.order[t.leg]);p=t.order[t.leg]}else if(t.dwell>0){}
+ for(let i=(t.dwell>0?t.leg+1:t.leg+1);i<t.order.length;i++){d+=dist(p,t.order[i]);p=t.order[i]}
+ d+=dist(p,D);return d*K}
+function stopState(t,i){return i<t.leg?'done':(i===t.leg&&t.dwell>0?'dwell':'pend')}
+
+let map=null,vs=null,ovs={},lines={};
+const ll=p=>ol.proj.fromLonLat([51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225]);
+function ov(key,cls,html,act,i){if(!ovs[key]){const d=document.createElement('div');d.className=cls;d.innerHTML=html;if(act){d.dataset.act=act;d.dataset.i=i}const o=new ol.Overlay({element:d,positioning:'center-center',stopEvent:true});map.addOverlay(o);ovs[key]={o,el:d}}return ovs[key]}
+function startMap(){const key=document.getElementById('key').value.trim(),m=document.getElementById('mapmsg');if(!key){m.textContent='ابتدا کلید وب نشان را وارد کن.';return}
+ if(typeof ol==='undefined'){
+  if(!window._tried){window._tried=1;m.textContent='SDK از اینترنت لود نشد؛ تلاش با فایل محلی neshan-sdk/index.js ...';
+   const l=document.createElement('link');l.rel='stylesheet';l.href='neshan-sdk/index.css';
+   const sc=document.createElement('script');sc.src='neshan-sdk/index.js';
+   sc.onload=()=>startMap();
+   sc.onerror=()=>{window._tried=0;m.textContent='خطا: SDK نشان لود نشد. دو فایل index.js و index.css را دانلود کن و در پوشه neshan-sdk کنار این فایل بگذار.'};
+   document.head.append(l,sc);return}
+  m.textContent='خطا: SDK نشان لود نشد.';return}
+ if(location.protocol==='file:')m.textContent='توجه: صفحه با file:// باز شده و ممکن است کلید دامنه‌دار قبول نشود. ';
+ try{if(map)map.setTarget(null);ovs={};lines={};document.getElementById('map').innerHTML='';
+  map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:11.5})});
+  try{vs=new ol.source.Vector();map.addLayer(new ol.layer.Vector({source:vs}))}catch(e){vs=null}
+  if(location.protocol!=='file:')m.textContent='';drawMap()}catch(e){map=null;m.textContent='خطا: '+(e&&e.message?e.message:e)}}
+function drawMap(){if(!map)return;const live=new Set(['depot']);
+ ov('depot','mk dep','🏭').o.setPosition(ll(D));
+ T.forEach((t,i)=>{
+  t.order.forEach((s,k)=>{const key='s'+t.id+s.n,z=stopState(t,k),r=ov(key,'mk','');live.add(key);
+   r.el.style.borderColor=t.c;r.el.style.background=z==='done'?t.c:z==='dwell'?'#e0a21a':'#fff';r.el.style.color=z==='pend'?t.c:'#fff';r.el.textContent=z==='done'?'✓':fa(k+1);r.o.setPosition(ll(s))});
+  const p=pos(t),tk=ov('t'+t.id,'tk','🚚<b>'+fa(t.id)+'</b>','sel',i);live.add('t'+t.id);
+  tk.el.style.borderColor=t.c;tk.el.classList.toggle('sel',i===sel);tk.o.setPosition(ll(p));
+  if(vs){try{const pts=[p];if(!t.fin){for(let k=(t.dwell>0?t.leg+1:t.leg);k<t.order.length;k++)pts.push(t.order[k]);pts.push(D)}
+   const co=pts.map(ll);let f=lines[t.id];
+   if(!f){f=new ol.Feature(new ol.geom.LineString(co));f.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:t.c,width:4,lineDash:[10,8]})}));vs.addFeature(f);lines[t.id]=f}else f.getGeometry().setCoordinates(co)}catch(e){}}
+ });
+ Object.keys(ovs).forEach(k=>{if(!live.has(k)){map.removeOverlay(ovs[k].o);delete ovs[k]}})}
+
+function drawPanel(){
+ const E=T.map(eta);
+ document.getElementById('tabs').innerHTML=T.map((t,i)=>`<button class="tab ${i===sel?'on':''}" data-act="sel" data-i="${i}"><b><i class="dot" style="background:${t.c}"></i>${t.name.split(' · ')[0]}</b><span>${t.fin?'تمام شد':'پایان: '+fmt(E[i].end)}</span></button>`).join('');
+ const t=T[sel],e=E[sel],sg=suggest(t);
+ const done=t.order.filter((_,i)=>i<t.leg).length;
+ let h=`<div class="st"><i class="dot" style="background:${t.c}"></i>${t.name}</div><div style="font-size:14px;margin:2px 0 6px">${stat(t)}</div>
+ <div class="meta"><span>تحویل‌شده: <b>${fa(done)} از ${fa(t.order.length)}</b></span><span>مسافت باقی‌مانده: <b>${fa(kmLeft(t).toFixed(1))} کیلومتر</b></span><span>پایان مسیر: <b>${t.fin?'—':fmt(e.end)}</b></span></div>`;
+ t.order.forEach((s,i)=>{const z=stopState(t,i);
+  h+=`<div class="row"><span class="num" style="border-color:${t.c};color:${t.c}">${fa(i+1)}</span><span class="nm">${s.n}</span>${z==='done'?'<span class="chip g">تحویل شد</span>':z==='dwell'?'<span class="chip o">در حال تخلیه</span>':`<span class="tm">${e.a[i]?fmt(e.a[i]):'—'}</span>`}</div>`});
+ if(t.tom.length)h+=`<div class="box w">منتقل‌شده به فردا: ${t.tom.map(s=>s.n).join('، ')}</div>`;
+ if(traffic==='heavy'&&!t.fin)h+=`<div class="box w">ترافیک سنگین است؛ زمان رسیدن‌ها نسبت به حالت عادی بیشتر شده.</div>`;
+ if(sg)h+=`<div class="box"><b>پیشنهاد مسیر بهتر:</b> ${sg.best.map(s=>s.n).join(' ← ')}<br>حدود ${fa(sg.km.toFixed(1))} کیلومتر و ${fa(Math.round(sg.min))} دقیقه کمتر<br><button class="on" data-act="apply">اعمال پیشنهاد</button></div>`;
+ else if(!t.fin&&t.order.length-(t.dwell>0?t.leg+1:t.leg)>=2)h+=`<div class="box">ترتیب فعلی توقف‌ها بهینه است.</div>`;
+ if(!t.fin&&e.end>SHIFT){const rem=t.order.length-(t.dwell>0?t.leg+1:t.leg);
+  h+=`<div class="box w"><b>هشدار:</b> پایان مسیر ${fmt(e.end)} است و از پایان شیفت (${fmt(SHIFT)}) گذشته.${rem>=2?`<br>پیشنهاد: «${t.order[t.order.length-1].n}» به فردا موکول شود.<br><button class="on" data-act="post">انتقال به فردا</button>`:''}</div>`}
+ document.getElementById('panel').innerHTML=h;
+ const al=T.map((x,i)=>!x.fin&&E[i].end>SHIFT?`<div class="box w">${x.name.split(' · ')[0]}: احتمال تأخیر نسبت به پایان شیفت</div>`:'').join('');
+ document.getElementById('alerts').innerHTML=al}
+
+function btns(){document.querySelectorAll('[data-act=tr]').forEach(b=>b.classList.toggle('on',b.dataset.v===traffic));
+ const p=document.getElementById('play');p.textContent=run?'توقف':'ادامه'}
+function all(){document.getElementById('clk').textContent=fmt(now);drawMap();drawPanel();btns()}
+
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;const a=b.dataset.act,t=T[sel];
+ if(a==='sel')sel=+b.dataset.i;
+ else if(a==='tr')traffic=b.dataset.v;
+ else if(a==='play')run=!run;
+ else if(a==='map'){startMap();return}
+ else if(a==='reset'){init();sel=0;run=true}
+ else if(a==='apply'){const sg=suggest(t);if(sg){t.order=t.order.slice(0,sg.st).concat(sg.best);if(t.dwell<=0){t.from=pos(t);t.frac=0}}}
+ else if(a==='post'){t.tom.push(t.order.pop())}
+ all()});
+document.getElementById('spd').addEventListener('change',e=>{speed=+e.target.value});
+
+let last=performance.now(),acc=0;
+setInterval(()=>{const n=performance.now(),dr=(n-last)/1000;last=n;if(!run)return;
+ const dm=dr*speed*3;now+=dm;T.forEach(t=>step(t,t.order,dm));
+ document.getElementById('clk').textContent=fmt(now);drawMap();acc+=dr;if(acc>1.2){acc=0;drawPanel()}},100);
+all();
+</script>
+</body>
+</html>
