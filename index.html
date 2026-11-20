@@ -80,7 +80,7 @@ svg{display:block;width:100%;height:auto}
 </div>
 
 <div class="card mapw">
-<div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><button class="on" data-act="map">نمایش نقشه نشان</button></div>
+<div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><input id="skey" placeholder="کلید سرویس نشان (مسیریابی)" aria-label="کلید سرویس نشان" autocomplete="off"><button class="on" data-act="map">نمایش نقشه نشان</button></div>
 <div id="mapmsg">برای دیدن نقشه و ترافیک زنده، کلید وب نشان را وارد کن.</div>
 <div id="map"></div>
 </div>
@@ -88,7 +88,7 @@ svg{display:block;width:100%;height:auto}
 <div class="tabs" id="tabs"></div>
 <div class="card" id="panel"></div>
 <div id="alerts"></div>
-<p class="hint">لایه ترافیک نشان روی نقشه زنده است، ولی ETA فعلاً با گزینه‌های ترافیک بالا محاسبه می‌شود. موقعیت کامیون‌ها هنوز شبیه‌سازی‌شده است.</p>
+<p class="hint">با وارد کردن کلید سرویس، کامیون‌ها روی مسیر واقعی جاده‌ها حرکت می‌کنند و زمان رسیدن‌ها از مسیریابی نشان (با ترافیک) می‌آید. موقعیت کامیون هنوز شبیه‌سازی‌شده است. کلیدها فقط روی همین دستگاه ذخیره می‌شوند.</p>
 
 <script>
 const K=0.0325,DW=25,SHIFT=720,D={x:400,y:300};
@@ -103,9 +103,13 @@ function init(){now=480;T=[
  mk(3,'کامیون ۳ · مهدی','#3b6fd4',[['فروشگاه شهرری',200,480],['سوپر میدان فتح',330,400],['رستوران ستارخان',400,520]])]}
 init();
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-const legMin=(a,b)=>dist(a,b)*K/(30*TR[traffic])*60;
+const R={},Q=[];let busy=false,skey='';
+const rk=(a,b)=>[a.x,a.y,b.x,b.y].map(v=>Math.round(v*10)).join(',');
+const legMin=(a,b)=>{const r=R[rk(a,b)];return r&&r.min?r.min:dist(a,b)*K/(30*TR[traffic])*60};
 const dest=(t)=>t.leg<t.order.length?t.order[t.leg]:D;
-function pos(t){if(t.fin)return D;if(t.dwell>0)return t.order[t.leg];const to=dest(t);return{x:t.from.x+(to.x-t.from.x)*t.frac,y:t.from.y+(to.y-t.from.y)*t.frac}}
+function fromMap(c){const l=ol.proj.toLonLat(c);return{x:400+(l[0]-51.389)/0.000277,y:300+(35.689-l[1])/0.000225}}
+function atFrac(a,b,f){const r=R[rk(a,b)];if(r&&r.pts){const tg=f*r.len;let i=1;while(i<r.cum.length-1&&r.cum[i]<tg)i++;const u=(tg-r.cum[i-1])/Math.max(r.cum[i]-r.cum[i-1],1e-9),p=r.pts[i-1],q=r.pts[i];return fromMap([p[0]+(q[0]-p[0])*Math.min(1,Math.max(0,u)),p[1]+(q[1]-p[1])*Math.min(1,Math.max(0,u))])}return{x:a.x+(b.x-a.x)*f,y:a.y+(b.y-a.y)*f}}
+function pos(t){if(t.fin)return D;if(t.dwell>0)return t.order[t.leg];return atFrac(t.from,dest(t),t.frac)}
 function step(s,o,dt,cb){let g=0;while(dt>1e-9&&!s.fin&&g++<60){
  if(s.dwell>0){const u=Math.min(dt,s.dwell);s.dwell-=u;dt-=u;if(s.dwell<=1e-9){s.dwell=0;s.from={x:o[s.leg].x,y:o[s.leg].y};s.leg++;s.frac=0}continue}
  const to=s.leg<o.length?o[s.leg]:D,need=Math.max(legMin(s.from,to),.01),rem=(1-s.frac)*need;
@@ -143,7 +147,35 @@ function startMap(){const key=document.getElementById('key').value.trim(),m=docu
  try{if(map)map.setTarget(null);ovs={};lines={};document.getElementById('map').innerHTML='';
   map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:11.5})});
   try{vs=new ol.source.Vector();map.addLayer(new ol.layer.Vector({source:vs}))}catch(e){vs=null}
-  if(location.protocol!=='file:')m.textContent='';drawMap()}catch(e){map=null;m.textContent='خطا: '+(e&&e.message?e.message:e)}}
+  if(location.protocol!=='file:')m.textContent='';
+  skey=document.getElementById('skey').value.trim();for(const k in R)delete R[k];Q.length=0;
+  try{localStorage.setItem('nk',key);localStorage.setItem('nsk',skey)}catch(e){}
+  if(!skey)m.textContent='کلید سرویس مسیریابی وارد نشده؛ فعلاً مسیر خط مستقیم است.';
+  T.forEach(prefetch);drawMap()}catch(e){map=null;m.textContent='خطا: '+(e&&e.message?e.message:e)}}
+const toLL=p=>[51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225];
+function dec(s){let i=0,la=0,lo=0,o=[];while(i<s.length){let b,sh=0,r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);la+=(r&1)?~(r>>1):r>>1;sh=0;r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lo+=(r&1)?~(r>>1):r>>1;o.push([lo/1e5,la/1e5])}return o}
+function want(a,b){if(!skey||!map)return;const k=rk(a,b),r=R[k];if(r&&(r.q||Date.now()-r.ts<(r.pts?600000:60000)))return;
+ R[k]=r||{ts:0};R[k].q=1;Q.push([k,a,b]);pump()}
+async function pump(){if(busy)return;busy=true;const m=document.getElementById('mapmsg');
+ while(Q.length){const[k,a,b]=Q.shift(),r=R[k];if(!r)continue;
+  try{const A=toLL(a),B=toLL(b);
+   const res=await fetch(`https://api.neshan.org/v4/direction?type=car&origin=${A[1]},${A[0]}&destination=${B[1]},${B[0]}&alternative=false`,{headers:{'Api-Key':skey}});
+   if(!res.ok)throw new Error('HTTP '+res.status);
+   const j=await res.json(),rt=j.routes&&j.routes[0];if(!rt)throw new Error('مسیری پیدا نشد');
+   const pts=dec(rt.overview_polyline.points).map(q=>ol.proj.fromLonLat(q)),cum=[0];
+   for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+   let sec=0;(rt.legs||[]).forEach(l=>sec+=(l.duration&&l.duration.value)||0);
+   r.pts=pts;r.cum=cum;r.len=cum[cum.length-1]||1;r.min=sec?sec/60:Math.max(1,r.len/1000/30*60);r.ts=Date.now();
+   m.textContent='';const sg=document.querySelector('.seg');if(sg)sg.style.display='none'}
+  catch(e){r.fail=1;r.ts=Date.now();m.textContent='مسیریابی نشان: '+e.message+' (کلید سرویس، دامنه مجاز یا CORS را بررسی کن)'}
+  r.q=0;await new Promise(z=>setTimeout(z,250))}
+ busy=false}
+function prefetch(t){const sq=[D,...t.order,D];for(let i=t.leg;i<sq.length-1;i++)want(sq[i],sq[i+1]);if(!t.fin&&t.dwell<=0)want(t.from,dest(t))}
+function seg(a,b){const r=R[rk(a,b)];return r&&r.pts?r.pts:[ll(a),ll(b)]}
+function roadPath(t,p){let out=[ll(p)];if(t.fin)return out;
+ if(t.dwell<=0){const a=t.from,b=dest(t),r=R[rk(a,b)];
+  if(r&&r.pts){const tg=t.frac*r.len;out=out.concat(r.pts.filter((_,i)=>r.cum[i]>tg))}else out.push(ll(b))}
+ const sq=[D,...t.order,D];for(let i=t.leg+1;i<sq.length-1;i++)out=out.concat(seg(sq[i],sq[i+1]));return out}
 function drawMap(){if(!map)return;const live=new Set(['depot']);
  ov('depot','mk dep','🏭').o.setPosition(ll(D));
  T.forEach((t,i)=>{
@@ -152,13 +184,13 @@ function drawMap(){if(!map)return;const live=new Set(['depot']);
   const p=pos(t),tk=ov('t'+t.id,'tk','🚚<b>'+fa(t.id)+'</b>','sel',i);live.add('t'+t.id);
   tk.el.style.borderColor=t.c;tk.el.classList.toggle('sel',i===sel);tk.o.setPosition(ll(p));
   if(vs){try{const pts=[p];if(!t.fin){for(let k=(t.dwell>0?t.leg+1:t.leg);k<t.order.length;k++)pts.push(t.order[k]);pts.push(D)}
-   const co=pts.map(ll);let f=lines[t.id];
+   const co=roadPath(t,p);let f=lines[t.id];
    if(!f){f=new ol.Feature(new ol.geom.LineString(co));f.setStyle(new ol.style.Style({stroke:new ol.style.Stroke({color:t.c,width:4,lineDash:[10,8]})}));vs.addFeature(f);lines[t.id]=f}else f.getGeometry().setCoordinates(co)}catch(e){}}
  });
  Object.keys(ovs).forEach(k=>{if(!live.has(k)){map.removeOverlay(ovs[k].o);delete ovs[k]}})}
 
 function drawPanel(){
- const E=T.map(eta);
+ T.forEach(prefetch);const E=T.map(eta);
  document.getElementById('tabs').innerHTML=T.map((t,i)=>`<button class="tab ${i===sel?'on':''}" data-act="sel" data-i="${i}"><b><i class="dot" style="background:${t.c}"></i>${t.name.split(' · ')[0]}</b><span>${t.fin?'تمام شد':'پایان: '+fmt(E[i].end)}</span></button>`).join('');
  const t=T[sel],e=E[sel],sg=suggest(t);
  const done=t.order.filter((_,i)=>i<t.leg).length;
@@ -195,6 +227,7 @@ let last=performance.now(),acc=0;
 setInterval(()=>{const n=performance.now(),dr=(n-last)/1000;last=n;if(!run)return;
  const dm=dr*speed*3;now+=dm;T.forEach(t=>step(t,t.order,dm));
  document.getElementById('clk').textContent=fmt(now);drawMap();acc+=dr;if(acc>1.2){acc=0;drawPanel()}},100);
+try{document.getElementById('key').value=localStorage.getItem('nk')||'';document.getElementById('skey').value=localStorage.getItem('nsk')||''}catch(e){}
 all();
 </script>
 </body>
