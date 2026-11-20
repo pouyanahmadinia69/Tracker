@@ -64,6 +64,7 @@ svg{display:block;width:100%;height:auto}
 button.on{border-color:#96192e}
 .tab.on{border-color:#a82a40;box-shadow:0 0 0 1px #a82a40}
 h1{padding-bottom:8px;border-bottom:1px solid #5e1c29}
+.leg{display:flex;gap:14px;font-size:12px;color:var(--mu);padding:8px 12px;flex-wrap:wrap}.leg i{display:inline-block;width:18px;height:5px;border-radius:3px;margin-inline-end:5px;vertical-align:middle}
 </style>
 </head>
 <body>
@@ -84,9 +85,10 @@ h1{padding-bottom:8px;border-bottom:1px solid #5e1c29}
 </div>
 
 <div class="card mapw">
-<div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><input id="skey" placeholder="کلید سرویس نشان (مسیریابی)" aria-label="کلید سرویس نشان" autocomplete="off"><button data-act="mt">نقشه روشن</button><button class="on" data-act="map">نمایش نقشه نشان</button></div>
+<div class="kbar"><input id="key" placeholder="کلید وب نشان (web.xxxx)" aria-label="کلید وب نشان" autocomplete="off"><input id="skey" placeholder="کلید سرویس نشان (مسیریابی)" aria-label="کلید سرویس نشان" autocomplete="off"><button data-act="tf">ترافیک: روشن</button><button data-act="mt">نقشه روشن</button><button class="on" data-act="map">نمایش نقشه نشان</button></div>
 <div id="mapmsg">برای دیدن نقشه و ترافیک زنده، کلید وب نشان را وارد کن.</div>
 <div id="map" dir="ltr"></div>
+<div class="leg"><span><i style="background:#2ecc71"></i>روان</span><span><i style="background:#f1c40f"></i>نیمه‌سنگین</span><span><i style="background:#e67e22"></i>سنگین</span><span><i style="background:#c0392b"></i>بسیار سنگین</span></div>
 </div>
 
 <div class="tabs" id="tabs"></div>
@@ -135,9 +137,10 @@ function kmLeft(t){if(t.fin)return 0;let p=pos(t),d=0;const st=t.dwell>0?t.leg+1
  d+=dist(p,D);return d*K}
 function stopState(t,i){return i<t.leg?'done':(i===t.leg&&t.dwell>0?'dwell':'pend')}
 
-let night=true,map=null,vs=null,ovs={},lines={},feats={};
+let traffOn=true,night=true,map=null,vs=null,ovs={},lines={},feats={};
 const ll=p=>ol.proj.fromLonLat([51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225]);
 function ov(key,cls,html,act,i){if(!ovs[key]){const d=document.createElement('div');d.className=cls;d.innerHTML=html;if(act){d.dataset.act=act;d.dataset.i=i}const o=new ol.Overlay({element:d,positioning:'center-center',stopEvent:true});map.addOverlay(o);ovs[key]={o,el:d}}return ovs[key]}
+function applyType(){if(!map)return;try{map.setMapType(night?'standard-night':'neshan')}catch(e){}try{map.switchTrafficLayer(traffOn)}catch(e){}}
 function startMap(){const key=document.getElementById('key').value.trim(),m=document.getElementById('mapmsg');if(!key){m.textContent='ابتدا کلید وب نشان را وارد کن.';return}
  if(typeof ol==='undefined'){
   if(!window._tried){window._tried=1;m.textContent='SDK از اینترنت لود نشد؛ تلاش با فایل محلی neshan-sdk/index.js ...';
@@ -149,8 +152,8 @@ function startMap(){const key=document.getElementById('key').value.trim(),m=docu
   m.textContent='خطا: SDK نشان لود نشد.';return}
  if(location.protocol==='file:')m.textContent='توجه: صفحه با file:// باز شده و ممکن است کلید دامنه‌دار قبول نشود. ';
  try{if(map)map.setTarget(null);ovs={};lines={};feats={};document.getElementById('map').innerHTML='';
-  map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:11.5})});
-  try{map.setMapType('standard-night')}catch(e){night=false}
+  map=new ol.Map({mapType:'neshan',target:'map',key,poi:false,traffic:true,view:new ol.View({center:ll(D),zoom:12})});
+  applyType();setTimeout(applyType,900);setTimeout(applyType,2500);
   setTimeout(()=>{try{map.updateSize()}catch(e){}},300);window.addEventListener('resize',()=>{try{map.updateSize()}catch(e){}});
   try{vs=new ol.source.Vector();map.addLayer(new ol.layer.Vector({source:vs}))}catch(e){vs=null}
   map.on('click',ev=>{map.forEachFeatureAtPixel(ev.pixel,f=>{const i=f.get('ti');if(i!=null){sel=i;all();return true}},{hitTolerance:10})});
@@ -220,7 +223,7 @@ function drawPanel(){
  const al=T.map((x,i)=>!x.fin&&E[i].end>SHIFT?`<div class="box w">${x.name.split(' · ')[0]}: احتمال تأخیر نسبت به پایان شیفت</div>`:'').join('');
  document.getElementById('alerts').innerHTML=al}
 
-function btns(){const mb=document.querySelector('[data-act=mt]');if(mb)mb.textContent=night?'نقشه روشن':'نقشه تیره';document.querySelectorAll('[data-act=tr]').forEach(b=>b.classList.toggle('on',b.dataset.v===traffic));
+function btns(){const tb=document.querySelector('[data-act=tf]');if(tb)tb.textContent=traffOn?'ترافیک: روشن':'ترافیک: خاموش';const mb=document.querySelector('[data-act=mt]');if(mb)mb.textContent=night?'نقشه روشن':'نقشه تیره';document.querySelectorAll('[data-act=tr]').forEach(b=>b.classList.toggle('on',b.dataset.v===traffic));
  const p=document.getElementById('play');p.textContent=run?'توقف':'ادامه'}
 function all(){document.getElementById('clk').textContent=fmt(now);drawMap();drawPanel();btns()}
 
@@ -228,7 +231,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
  if(a==='sel')sel=+b.dataset.i;
  else if(a==='tr')traffic=b.dataset.v;
  else if(a==='play')run=!run;
- else if(a==='mt'){if(map){night=!night;try{map.setMapType(night?'standard-night':'neshan')}catch(e){}}}
+ else if(a==='mt'){if(map){night=!night;applyType()}}
+ else if(a==='tf'){traffOn=!traffOn;if(map)applyType()}
  else if(a==='map'){startMap();return}
  else if(a==='reset'){init();sel=0;run=true}
  else if(a==='apply'){const sg=suggest(t);if(sg){t.order=t.order.slice(0,sg.st).concat(sg.best);if(t.dwell<=0){t.from=pos(t);t.frac=0}}}
