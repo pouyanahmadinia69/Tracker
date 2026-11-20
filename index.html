@@ -138,18 +138,21 @@ function kmLeft(t){if(t.fin)return 0;let p=pos(t),d=0;const st=t.dwell>0?t.leg+1
  d+=dist(p,D);return d*K}
 function stopState(t,i){return i<t.leg?'done':(i===t.leg&&t.dwell>0?'dwell':'pend')}
 
-let traffOn=true,night=true,map=null,ready=false,MK={};
+let traffOn=true,night=true,map=null,ready=false,started=false,view=null,wmsg=false,MK={};
 const ll=p=>[51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225];
 function startMap(keep){const m=document.getElementById('mapmsg'),key=document.getElementById('key').value.trim();
  if(!key){m.textContent='ابتدا کلید وب نشان را وارد کن.';return}
  if(typeof nmp_mapboxgl==='undefined'){m.textContent='خطا: SDK نشان لود نشد. اینترنت را بررسی کن و دوباره باز کن.';return}
- let c=[51.389,35.689],z=12;if(keep&&map){c=map.getCenter().toArray();z=map.getZoom()}
- try{if(map)map.remove();for(const k in MK)MK[k].m.remove();MK={};ready=false;document.getElementById('map').innerHTML='';
-  const MT=nmp_mapboxgl.Map.mapTypes;
-  map=new nmp_mapboxgl.Map({mapType:night?(MT.neshanVectorNight||MT.neshanVector):MT.neshanVector,container:'map',zoom:z,pitch:0,center:c,minZoom:8,maxZoom:20,trackResize:true,mapKey:key,poi:false,traffic:traffOn});
+ let c=[51.389,35.689],z=12;if(keep&&view){c=view.c;z=view.z}
+ started=true;
+ try{try{if(map)map.remove()}catch(e){}map=null;for(const k in MK){try{MK[k].m.remove()}catch(e){}}MK={};ready=false;
+  const host=document.getElementById('map');host.innerHTML='';const box=document.createElement('div');box.style.cssText='width:100%;height:100%';host.appendChild(box);
+  const MT=nmp_mapboxgl.Map.mapTypes;if(night&&!MT.neshanVectorNight)m.textContent='حالت شب در این SDK پیدا نشد؛ نقشه روشن نمایش داده می‌شود.';
+  map=new nmp_mapboxgl.Map({mapType:night?(MT.neshanVectorNight||MT.neshanVector):MT.neshanVector,container:box,zoom:z,pitch:0,center:c,minZoom:8,maxZoom:20,trackResize:true,mapKey:key,poi:false,traffic:traffOn});
   map.on('load',()=>{map.addSource('rt',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
    map.addLayer({id:'rt',type:'line',source:'rt',layout:{'line-cap':'round','line-join':'round'},paint:{'line-color':['get','c'],'line-width':4,'line-dasharray':[2,1.5]}});
    ready=true;m.textContent='';drawMap()});
+  map.on('moveend',()=>{try{view={c:map.getCenter().toArray(),z:map.getZoom()}}catch(e){}});
   map.on('error',e=>{const x=e&&e.error;m.textContent='خطای نقشه: '+(x&&(x.message||x.status)||'نامشخص')});
   if(!keep){skey=document.getElementById('skey').value.trim();for(const k in R)delete R[k];Q.length=0;
    try{localStorage.setItem('nk',key);localStorage.setItem('nsk',skey)}catch(e){}
@@ -157,8 +160,8 @@ function startMap(keep){const m=document.getElementById('mapmsg'),key=document.g
   T.forEach(prefetch)}catch(e){map=null;m.textContent='خطا: '+(e&&e.message?e.message:e)}}
 const toLL=p=>[51.389+(p.x-400)*0.000277,35.689-(p.y-300)*0.000225];
 function dec(s){let i=0,la=0,lo=0,o=[];while(i<s.length){let b,sh=0,r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);la+=(r&1)?~(r>>1):r>>1;sh=0;r=0;do{b=s.charCodeAt(i++)-63;r|=(b&31)<<sh;sh+=5}while(b>=32);lo+=(r&1)?~(r>>1):r>>1;o.push([lo/1e5,la/1e5])}return o}
-function want(a,b){if(!skey||!map)return;const k=rk(a,b),r=R[k];if(r&&(r.q||Date.now()-r.ts<(r.pts?600000:60000)))return;
- R[k]=r||{ts:0};R[k].q=1;Q.push([k,a,b]);pump()}
+function want(a,b,pri){if(!skey||!map)return;const k=rk(a,b),r=R[k];if(r&&(r.q||Date.now()-r.ts<(r.pts?600000:60000)))return;
+ R[k]=r||{ts:0};R[k].q=1;pri?Q.unshift([k,a,b]):Q.push([k,a,b]);pump()}
 async function pump(){if(busy)return;busy=true;const m=document.getElementById('mapmsg');
  while(Q.length){const[k,a,b]=Q.shift(),r=R[k];if(!r)continue;
   try{const A=toLL(a),B=toLL(b);
@@ -173,7 +176,8 @@ async function pump(){if(busy)return;busy=true;const m=document.getElementById('
   catch(e){r.fail=1;r.ts=Date.now();m.textContent='مسیریابی نشان: '+e.message+' (کلید سرویس، دامنه مجاز یا CORS را بررسی کن)'}
   r.q=0;await new Promise(z=>setTimeout(z,250))}
  busy=false}
-function prefetch(t){const sq=[D,...t.order,D];for(let i=t.leg;i<sq.length-1;i++)want(sq[i],sq[i+1]);if(!t.fin&&t.dwell<=0)want(t.from,dest(t))}
+const waiting=t=>{if(t.fin||t.dwell>0)return false;const r=R[rk(t.from,dest(t))];return !(r&&(r.pts||r.fail))};
+function prefetch(t){if(!t.fin&&t.dwell<=0)want(t.from,dest(t),1);const sq=[D,...t.order,D];for(let i=t.leg;i<sq.length-1;i++)want(sq[i],sq[i+1])}
 function seg(a,b){const r=R[rk(a,b)];return r&&r.pts?r.pts:[ll(a),ll(b)]}
 function roadPath(t,p){let out=[ll(p)];if(t.fin)return out;
  if(t.dwell<=0){const a=t.from,b=dest(t),r=R[rk(a,b)];
@@ -225,8 +229,8 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
  if(a==='sel')sel=+b.dataset.i;
  else if(a==='tr')traffic=b.dataset.v;
  else if(a==='play')run=!run;
- else if(a==='mt'){night=!night;if(map)startMap(true)}
- else if(a==='tf'){traffOn=!traffOn;if(map)startMap(true)}
+ else if(a==='mt'){night=!night;if(started)startMap(true)}
+ else if(a==='tf'){traffOn=!traffOn;if(started)startMap(true)}
  else if(a==='map'){startMap();return}
  else if(a==='reset'){init();sel=0;run=true}
  else if(a==='apply'){const sg=suggest(t);if(sg){t.order=t.order.slice(0,sg.st).concat(sg.best);if(t.dwell<=0){t.from=pos(t);t.frac=0}}}
@@ -236,6 +240,8 @@ document.getElementById('spd').addEventListener('change',e=>{speed=+e.target.val
 
 let last=performance.now(),acc=0;
 setInterval(()=>{const n=performance.now(),dr=(n-last)/1000;last=n;if(!run)return;
+ if(map&&skey&&ready&&T.some(waiting)){T.forEach(prefetch);const mm=document.getElementById('mapmsg');if(!mm.textContent||wmsg){mm.textContent='در حال دریافت مسیرها از نشان...';wmsg=true}return}
+ if(wmsg){document.getElementById('mapmsg').textContent='';wmsg=false}
  const dm=dr*speed*3;now+=dm;T.forEach(t=>step(t,t.order,dm));
  document.getElementById('clk').textContent=fmt(now);drawMap();acc+=dr;if(acc>1.2){acc=0;drawPanel()}},100);
 try{document.getElementById('key').value=localStorage.getItem('nk')||'';document.getElementById('skey').value=localStorage.getItem('nsk')||''}catch(e){}
